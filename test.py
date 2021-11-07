@@ -16,8 +16,8 @@ if __name__ == '__main__':
     env.reset()
     for _ in range(28):
         env.render()
-        step = env.action_space.sample()
-        s, r, d, info = env.step(step)  # take a random action
+        action = env.action_space.sample()
+        s, r, d, info = env.step(action)  # take a random action
         print(s, r, d)
         #print(step, r, info)
     env.close()
