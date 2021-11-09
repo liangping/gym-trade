@@ -16,8 +16,17 @@ def load_data(datafile='btc.csv'):
 
     days = 5
 
-    df = pd.read_csv(os.path.join(os.path.dirname(__file__), datafile), index_col=0, parse_dates=True)
-    df = df[["Open", "High", "Close", "Low", 'Volume']]
+    data = pd.read_csv(os.path.join(os.path.dirname(__file__), datafile), index_col=0, parse_dates=True)
+    data = data[["Open", "High", "Close", "Low", 'Volume']]
+
+    logK1 = np.log(np.array(data['High'])/np.array(data['Low']))
+    logK2 = np.log(np.array(data['Open']/np.average(data['Close'])))
+    # volume = np.log(np.array(data['Volume']))
+    logRet_1 = np.diff(np.log(data['Close']))[days-1:]
+    logRet_5 = np.log(np.array(data['Close'][days:])/np.array(data['Close'][:-days]))
+
+    # logRet_5 = np.diff(np.log(data['Close']), n=5)
+    logVol_5 = np.log(np.array(data['Volume'][5:]/np.array(data['Volume'][:-5])))
 
     # price = np.array((df['High']+df['Low'])/2)[days:]
     # logK1 = np.log(np.array(df['High'])/np.array(df['Low']))
@@ -30,7 +39,8 @@ def load_data(datafile='btc.csv'):
     #
     # return np.column_stack([price, logK1[days:], logRet_1, logRet_5, volume])
 
-    return df
+    x = np.column_stack([logK1[days:], logRet_1, logRet_5, logVol_5])
+    return x
 
 
 class TradeEnv(gym.Env):
@@ -53,6 +63,7 @@ class TradeEnv(gym.Env):
         self.qty = 0
         self.remained_cash = 0
         self.total_value_on_last_step = 0
+        self.holding = np.zeros(10, dtype=float)
 
         self.reset()  # reset values for business logic
 
@@ -62,6 +73,8 @@ class TradeEnv(gym.Env):
         self.qty = int(self.initials * 0.5 / self.get_price())
         self.remained_cash = self.initials - self.qty * self.get_price()
         self.total_value_on_last_step = self.initials
+        self.holding = np.append(np.ones(5, dtype=float), np.zeros(5, dtype=float))
+        # return np.append(self.state, self.holding)
         return self.state
 
     def seed(self, seed=None):
@@ -78,6 +91,7 @@ class TradeEnv(gym.Env):
         self.state = self.obs_data[self.step_index]
         reward = self.__reward__(action)
         done = self.__is_done__()
+        # return np.append(self.state, self.holding), reward, done, {}
         return self.state, reward, done, {}
 
     def render(self, mode='human'):
@@ -103,23 +117,35 @@ class TradeEnv(gym.Env):
             # buy operation
             self.qty += 1
             self.remained_cash -= qty * price
+            for i in range(0, 10):
+                if self.holding[i] == 0:
+                    self.holding[i] = 1
+                    break
+
         elif action == 1:
             pass
         elif action == 2:
             # sell operation
             self.qty -= 1
             self.remained_cash += qty * price
+            for i in range(0, 10):
+                if self.holding[9-i] == 1:
+                    self.holding[9-i] = 0
+                    break
 
-        return r*0.001
+        if r > 0:
+            return 5
+        else:
+            return -5
 
     def get_price(self):
         return np.average(self.state)
 
     def __is_done__(self):
-        if self.step_index >= self.length \
-                or self.qty < 1 \
-                or self.remained_cash < 1\
-                or self.__stock_value__() < self.initials * 0.8:
+        if self.step_index >= self.length:
+                # or self.qty < 1 \
+                # or self.remained_cash < 1\
+                # or self.__stock_value__() < self.initials * 0.8:
             return True
         else:
             return False

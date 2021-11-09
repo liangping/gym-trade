@@ -85,8 +85,10 @@ eps = np.finfo(np.float32).eps.item()
 def select_action(state):
     state = torch.from_numpy(state).float()
     probs, state_value = model(state)
+    # if env.holding
 
     # create a categorical distribution over the list of probabilities of actions
+    # print(state, probs, state_value)
     m = Categorical(probs)
 
     # and sample an action using the distribution
@@ -146,7 +148,7 @@ def main():
     running_reward = 10
 
     # run inifinitely many episodes
-    for i_episode in range(2000):
+    for i_episode in range(50):
 
         # reset environment and episode reward
         state = env.reset()
@@ -154,10 +156,11 @@ def main():
 
         # for each episode, only run 9999 steps so that we don't
         # infinite loop while learning
-        for t in range(1, 480):
+        for t in range(1, 40):
 
             # select action from policy
             action = select_action(state)
+            print("action:", action)
 
             # take the action
             state, reward, done, _ = env.step(action)
@@ -178,7 +181,7 @@ def main():
 
         # log results
         if i_episode % args.log_interval == 0:
-            # env.render()
+            env.render()
             print('Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}'.format(
                 i_episode, ep_reward, running_reward))
 
