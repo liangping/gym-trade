@@ -168,7 +168,7 @@ def main():
             if args.render:
                 env.render()
 
-            model.rewards.append(reward)
+            model.rewards.append(-reward)
             ep_reward += reward
             if done:
                 break
